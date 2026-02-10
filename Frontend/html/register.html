@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Register - ResumeAnalyzer</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <main class="auth">
+    <h2>Create account</h2>
+    <form method="post" id="registerForm">
+      <label>Username<input name="username" required></label>
+      <label>Email<input type="email" name="email" required></label>
+      <label>Password<input type="password" name="password" required></label>
+      <button type="submit">Register</button>
+    </form>
+    <p><a href="login.html">Already have an account? Login</a></p>
+    <pre id="regOutput"></pre>
+  </main>
+  <script src="../js/app.js"></script>
+</body>
+</html>
