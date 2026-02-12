@@ -81,23 +81,19 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
     return {"message": "user registered success ✅"}
 
 @router.post("/login")
-async def login(user: UserLogin, response: Response,db: Session=Depends(get_db)):
+async def login(user: UserLogin, response: Response, db: Session=Depends(get_db)):
     dbuser = db.query(User).filter(User.email == user.email).first()
 
     if not dbuser or not verify_password(user.password, dbuser.password):
-        raise HTTPException(status_code=401,detail="Invalid Credentials" )
+        raise HTTPException(status_code=401, detail="Invalid Credentials")
 
-    # if(user.password != dbuser.password):
-    #     raise HTTPException(status_code=401, detail="Invalid Credentials")
-    # return{"message": "user logged in 👍"}
+    token = create_access_token(data={"sub": dbuser.email})
 
-    token = create_access_token(data={"sub":dbuser.email})
-
-    print("Token Generated",token)
+    print("Token Generated", token)
 
     response.set_cookie(
         key="access_token",
-        value=f"Bearer{token}",
+        value=f"Bearer {token}",
         httponly=True,
         max_age=3600,
         samesite="lax"

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Resume Analyzer</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Resume Analyzer</div>
+        <div class="nav-links">
+            <a href="#" onclick="showResetPassword()">Reset Password</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div class="dashboard-card">
+            <h1>Welcome to Dashboard</h1>
+            <p>Upload and analyze resumes with AI-powered insights</p>
+
+            <div class="upload-section">
+                <h2>Upload Resume</h2>
+                <input type="file" id="resumeFile" accept=".pdf,.docx">
+                <button class="btn-upload" onclick="uploadResume()">Analyze Resume</button>
+            </div>
+
+            <div id="loader" class="loader-container">
+                <div class="loader">
+                    <div class="loader-ring"></div>
+                    <div class="loader-ring"></div>
+                    <div class="loader-ring"></div>
+                </div>
+                <p class="loader-text">Analyzing your resume...</p>
+                <div class="loader-steps">
+                    <div class="loader-step active" id="step1">
+                        <span class="step-icon">📄</span>
+                        <span class="step-text">Extracting file data</span>
+                    </div>
+                    <div class="loader-step" id="step2">
+                        <span class="step-icon">🔍</span>
+                        <span class="step-text">Finding key skills</span>
+                    </div>
+                    <div class="loader-step" id="step3">
+                        <span class="step-icon">💡</span>
+                        <span class="step-text">Generating recommendations</span>
+                    </div>
+                    <div class="loader-step" id="step4">
+                        <span class="step-icon">📊</span>
+                        <span class="step-text">Calculating ATS score</span>
+                    </div>
+                </div>
+            </div>
+            <div id="result" class="result-section"></div>
+        </div>
+    </div>
+
+    <div id="resetModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeResetModal()">&times;</span>
+            <h2>Reset Password</h2>
+            <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" placeholder="Enter new password">
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password" id="confirmPassword" placeholder="Confirm new password">
+            </div>
+            <button class="btn-update" onclick="resetPassword()">Update Password</button>
+            <p id="resetMsg" class="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        async function uploadResume() {
+            const fileInput = document.getElementById('resumeFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showError('Please select a file');
+                return;
+            }
+
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('loader').style.display = 'block';
+            resetSteps();
+            animateSteps();
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('http://localhost:8000/v1/upload', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+
+                const data = await res.json();
+                document.getElementById('loader').style.display = 'none';
+                displayResults(data);
+            } catch (error) {
+                document.getElementById('loader').style.display = 'none';
+                showError('Error: ' + error.message);
+            }
+        }
+
+        function resetSteps() {
+            for (let i = 1; i <= 4; i++) {
+                const step = document.getElementById('step' + i);
+                step.classList.remove('active', 'completed');
+            }
+        }
+
+        function animateSteps() {
+            let currentStep = 1;
+            const interval = setInterval(() => {
+                if (currentStep > 1) {
+                    document.getElementById('step' + (currentStep - 1)).classList.remove('active');
+                    document.getElementById('step' + (currentStep - 1)).classList.add('completed');
+                }
+                if (currentStep <= 4) {
+                    document.getElementById('step' + currentStep).classList.add('active');
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 800);
+        }
+
+        function showError(message) {
+            document.getElementById('result').innerHTML = '<div class="error-message">' + message + '</div>';
+        }
+
+        function displayResults(data) {
+            const skillsHtml = data.skills.map(skill => 
+                '<span class="skill-tag">' + skill + '</span>'
+            ).join('');
+
+            const recommendationsHtml = data.recommendations.map((rec, index) => 
+                '<div class="recommendation-item"><span class="rec-number">' + (index + 1) + '</span><p>' + rec + '</p></div>'
+            ).join('');
+
+            let scoreClass = 'score-good';
+            if (data.ats_score < 60) {
+                scoreClass = 'score-low';
+            } else if (data.ats_score < 80) {
+                scoreClass = 'score-medium';
+            }
+
+            const html = '<div class="analysis-header"><h2>Analysis Results</h2></div>' +
+                '<div class="score-section">' +
+                '<div class="score-circle ' + scoreClass + '"><span class="score-value">' + data.ats_score + '</span><span class="score-label">ATS Score</span></div>' +
+                '<div class="score-bar"><div class="score-fill ' + scoreClass + '" style="width: ' + data.ats_score + '%"></div></div></div>' +
+                '<div class="skills-section"><h3>Detected Skills</h3><div class="skills-container">' + skillsHtml + '</div></div>' +
+                '<div class="recommendations-section"><h3>Recommendations</h3><div class="recommendations-list">' + recommendationsHtml + '</div></div>';
+
+            document.getElementById('result').innerHTML = html;
+        }
+
+        function showResetPassword() {
+            document.getElementById('resetModal').style.display = 'flex';
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').style.display = 'none';
+        }
+
+        async function resetPassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const msgElement = document.getElementById('resetMsg');
+
+            if (newPassword !== confirmPassword) {
+                msgElement.className = 'error-message';
+                msgElement.style.display = 'block';
+                msgElement.innerText = 'Passwords do not match';
+                return;
+            }
+
+            const res = await fetch('http://localhost:8000/v1/update_password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email: '', password: currentPassword, newpassword: newPassword })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                msgElement.className = 'success-message';
+                msgElement.style.display = 'block';
+                msgElement.innerText = 'Password updated successfully!';
+                setTimeout(() => { closeResetModal(); }, 2000);
+            } else {
+                msgElement.className = 'error-message';
+                msgElement.style.display = 'block';
+                msgElement.innerText = data.detail || 'Update failed';
+            }
+        }
+
+        async function logout() {
+            await fetch('http://localhost:8000/v1/logout', { method: 'POST', credentials: 'include' });
+            window.location.href = 'login.html';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('resetModal');
+            if (event.target === modal) { closeResetModal(); }
+        }
+    </script>
+</body>
+</html>
